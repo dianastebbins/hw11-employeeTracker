@@ -1,25 +1,22 @@
 const inquirer = require("inquirer");
 const mysql = require("mysql");
+// const mysql = require("promise-mysql");
 
-var connection = mysql.createConnection({
-    host: "localhost",
+const Role = require("./role");
+const Employee = require("./employee");
+const Department = require("./department");
+const EmployeeDB = require("./employeeDB");
 
-    // Your port; if not 3306
-    port: 3306,
+const roleData = new Role();
+const employeeData = new Employee();
+const departmentData = new Department();
+const employeeDB = new EmployeeDB();
 
-    // Your username
-    user: "root",
-
-    // Your password
-    password: "password",
-    database: "employee_db"
-});
-
-connection.connect(function (err) {
-    if (err) throw err;
-    console.log(`connected as id  ${connection.threadId}`);
+function runSystem() {
+    employeeDB.connect();
+    console.log(`Welcome to EMS, THE premiere Employee Management System`);
     selectMgmtArea();
-});
+}
 
 // ================================================================================
 //          MANAGEMENT AREAS
@@ -67,7 +64,7 @@ function selectMgmtArea() {
 
             case mgmtOptions[5]:
                 console.log(`Thank you for using EMS, THE premiere Employee Management System`);
-                connection.end();
+                employeeDB.disconnect();
                 return;
 
             default:
@@ -130,11 +127,16 @@ function manageDepartments() {
 }
 
 function viewAllDepartments() {
-    console.log(`viewAllDepartments`);
-};
+    console.log("pre db query call")
+    const theRows = departmentData.getAll();
+    console.log("post db query call")
+    console.log(`viewAllDepartments: ` + theRows);
+
+}
 
 function addDepartment(answers) {
     console.log(`addDepartment ${answers.newDeptName}`);
+    const theRows = departmentData.insertInto(answers.newDeptName);
 };
 
 function deleteDepartment() {
@@ -202,12 +204,14 @@ function manageRoles() {
 }
 
 function viewAllRoles() {
-    console.log(`viewAllRoles`);
+    const theRows = roleData.getAll();
+    console.log(`viewAllRoles: ` + theRows);
 };
 
 function addRole(answers) {
     console.log(`addRole ${answers.newRoleTitle} ${answers.newRoleSalary}`);
     selectExistingDepartment();
+    const theRows = roleData.insertInto(answers.newRoleTitle, answers.newRoleSalary, 2);
 };
 
 function deleteRole() {
@@ -285,13 +289,15 @@ function manageEmployees() {
 }
 
 function viewAllEmployees() {
-    console.log(`viewAllEmployees`);
+    const theRows = employeeData.getAll();
+    console.log(`viewAllEmployees: ` + theRows);
 };
 
 function addEmployee(answers) {
     console.log(`addEmployee ${answers.newEmployeeFirstName} ${answers.newEmployeeLastName}`);
     selectExistingRole();
     selectExistingManager();
+    const theRows = employeeData.insertInto(answers.newEmployeeFirstName, answers.newEmployeeLastName, 2, 1);
 };
 
 function deleteEmployee() {
@@ -523,3 +529,5 @@ function viewByDepartmentReport() {
 
 //     // logs the actual query being run
 //     console.log(query.sql);
+
+runSystem();
