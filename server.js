@@ -1,19 +1,25 @@
 const inquirer = require("inquirer");
 const mysql = require("mysql");
-// const mysql = require("promise-mysql");
+const consoleTable = require("console.table");
 
-const Role = require("./role");
-const Employee = require("./employee");
-const Department = require("./department");
-const EmployeeDB = require("./employeeDB");
+const dbConfig = {
+    host: "localhost",
+    port: 3306,
+    user: "root",
+    password: "password",
+    database: "employee_db"
+};
 
-const roleData = new Role();
-const employeeData = new Employee();
-const departmentData = new Department();
-const employeeDB = new EmployeeDB();
+const connection = mysql.createConnection(dbConfig);
 
 function runSystem() {
-    employeeDB.connect();
+    // employeeDB.connect();
+    connection.connect(function (err) {
+        if (err) {
+            console.log(`unable to connect to database: ${err}`);
+            return;
+        }
+    });
     console.log(`Welcome to EMS, THE premiere Employee Management System`);
     selectMgmtArea();
 }
@@ -28,7 +34,7 @@ const mgmtOptions = [
     `Manage Employees`,
     `Employees by Manager Report`,
     `Budget by Department Report`,
-    `Quit`
+    `Exit`
 ];
 const mgmtOptionQ = [
     {
@@ -64,7 +70,7 @@ function selectMgmtArea() {
 
             case mgmtOptions[5]:
                 console.log(`Thank you for using EMS, THE premiere Employee Management System`);
-                employeeDB.disconnect();
+                connection.end();
                 return;
 
             default:
@@ -83,7 +89,7 @@ const deptOptions = [
     `Add New Department`,
     `Delete Department`
 ];
-const deptOptionQ = [
+const deptOptionQuestions = [
     {
         name: `deptOptionSelected`,
         type: `list`,
@@ -99,7 +105,7 @@ const deptOptionQ = [
 ];
 
 function manageDepartments() {
-    inquirer.prompt(deptOptionQ).then(function (answers) {
+    inquirer.prompt(deptOptionQuestions).then(function (answers) {
         switch (answers.deptOptionSelected) {
             case deptOptions[0]:
                 selectMgmtArea();
@@ -119,29 +125,29 @@ function manageDepartments() {
 
             default:
                 manageDepartments();
-
         };
+    })
+}
 
+function viewAllDepartments() {
+    connection.query(`SELECT * FROM department`, function (err, results) {
+        if (err) throw err;
+        displayResults(results);
         manageDepartments();
     });
 }
 
-function viewAllDepartments() {
-    console.log("pre db query call")
-    const theRows = departmentData.getAll();
-    console.log("post db query call")
-    console.log(`viewAllDepartments: ` + theRows);
-
-}
-
 function addDepartment(answers) {
-    console.log(`addDepartment ${answers.newDeptName}`);
-    const theRows = departmentData.insertInto(answers.newDeptName);
+    connection.query(`INSERT INTO department SET ?`, { name: answers.newDeptName }, function (err, results) {
+        if (err) throw err;
+        manageDepartments();
+    });
 };
 
 function deleteDepartment() {
     console.log(`deleteDepartment`);
     selectExistingDepartment();
+    manageDepartments();
 };
 
 // ================================================================================
@@ -154,7 +160,7 @@ const roleOptions = [
     `Add New Role`,
     `Delete Role`
 ];
-const roleOptionQ = [
+const roleOptionQuestions = [
     {
         name: `roleOptionSelected`,
         type: `list`,
@@ -176,7 +182,7 @@ const roleOptionQ = [
 ];
 
 function manageRoles() {
-    inquirer.prompt(roleOptionQ).then(function (answers) {
+    inquirer.prompt(roleOptionQuestions).then(function (answers) {
         switch (answers.roleOptionSelected) {
             case roleOptions[0]:
                 selectMgmtArea();
@@ -196,27 +202,35 @@ function manageRoles() {
 
             default:
                 manageRoles();
-
         };
-
-        manageRoles();
     });
 }
 
 function viewAllRoles() {
-    const theRows = roleData.getAll();
-    console.log(`viewAllRoles: ` + theRows);
-};
+    connection.query(`SELECT * FROM role`, function (err, results) {
+        if (err) throw err;
+        displayResults(results);
+        manageRoles();
+    });
+}
 
 function addRole(answers) {
-    console.log(`addRole ${answers.newRoleTitle} ${answers.newRoleSalary}`);
-    selectExistingDepartment();
-    const theRows = roleData.insertInto(answers.newRoleTitle, answers.newRoleSalary, 2);
+    const associatedDeptId = selectExistingDepartment();
+    connection.query(`INSERT INTO role SET ?`,
+        {
+            title: answers.newRoleTitle,
+            salary: answers.newRoleSalary,
+            department_id: associatedDeptId
+        }, function (err, results) {
+            if (err) throw err;
+            manageRoles();
+        });
 };
 
 function deleteRole() {
     console.log(`deleteRole`);
     selectExistingRole();
+    manageRoles();
 };
 
 // ================================================================================
@@ -231,7 +245,7 @@ const employeeOptions = [
     `Update Role`,
     'Update Manager'
 ];
-const employeeOptionQ = [
+const employeeOptionQuestions = [
     {
         name: `employeeOptionSelected`,
         type: `list`,
@@ -253,7 +267,7 @@ const employeeOptionQ = [
 ];
 
 function manageEmployees() {
-    inquirer.prompt(employeeOptionQ).then(function (answers) {
+    inquirer.prompt(employeeOptionQuestions).then(function (answers) {
         switch (answers.employeeOptionSelected) {
             case employeeOptions[0]:
                 selectMgmtArea();
@@ -281,57 +295,53 @@ function manageEmployees() {
 
             default:
                 manageEmployees();
-
         };
-
-        manageEmployees();
     });
 }
 
 function viewAllEmployees() {
-    const theRows = employeeData.getAll();
-    console.log(`viewAllEmployees: ` + theRows);
+    connection.query(`SELECT * FROM employee`, function (err, results) {
+        if (err) throw err;
+        displayResults(results);
+        manageEmployees();
+    });
 };
 
 function addEmployee(answers) {
-    console.log(`addEmployee ${answers.newEmployeeFirstName} ${answers.newEmployeeLastName}`);
-    selectExistingRole();
-    selectExistingManager();
-    const theRows = employeeData.insertInto(answers.newEmployeeFirstName, answers.newEmployeeLastName, 2, 1);
+    const associatedRoleId = selectExistingRole();
+    const associatedManagerId = selectExistingManager();
+    connection.query(`INSERT INTO employee SET ?`,
+        {
+            first_name: answers.newEmployeeFirstName,
+            last_name: answers.newEmployeeLastName,
+            role_id: associatedRoleId,
+            manager_id: associatedManagerId
+        }, function (err, results) {
+            if (err) throw err;
+            manageEmployees();
+        });
 };
 
 function deleteEmployee() {
     console.log(`deleteEmployee`);
     selectExistingEmployee();
+    manageEmployees();
 };
 
 function updateEmployeeRole() {
     console.log(`updateEmployeeRole`);
     selectExistingEmployee();
     selectExistingRole();
+    manageEmployees();
 };
 
 function updateEmployeeManager() {
     console.log(`updateEmployeeManager`);
     selectExistingEmployee();
     selectExistingManager();
+    manageEmployees();
 };
 
-function selectExistingDepartment() {
-    console.log(`selectExistingDepartment`);
-};
-
-function selectExistingRole() {
-    console.log(`selectExistingRole`);
-};
-
-function selectExistingEmployee() {
-    console.log(`selectExistingEmployee`);
-};
-
-function selectExistingManager() {
-    console.log(`selectExistingManager`);
-};
 
 // ================================================================================
 //          EMPLOYEE REPORTS
@@ -368,20 +378,19 @@ function manageEmployeeReports() {
 
             default:
                 manageEmployeeReports();
-
         };
-
-        manageEmployeeReports();
     });
 }
 
 function viewAllEmployeesReport() {
     console.log(`viewAllEmployeesReport`);
+    manageEmployeeReports();
 };
 
 function viewByManagerReport() {
     console.log(`viewByManagerReport`);
     selectExistingManager();
+    manageEmployeeReports();
 };
 
 // ================================================================================
@@ -419,115 +428,50 @@ function manageDepartmentBudgetReports() {
 
             default:
                 manageDepartmentBudgetReports();
-
         };
-
-        manageDepartmentBudgetReports();
     });
 }
 
 function viewAllBudgetsReport() {
     console.log(`viewAllBudgetsReport`);
+    manageDepartmentBudgetReports();
 };
 
 function viewByDepartmentReport() {
     console.log(`viewByDepartmentReport`);
     selectExistingDepartment();
+    manageDepartmentBudgetReports();
 };
 
-// function test() {
-//     // get some table data and display
-//     getEmployees();
+// ================================================================================
+//          HELPER FUNCTIONS
+// ================================================================================
 
-//     // insert a new ...something...
-//     const answers = {
-//         firstName: "Makayla",
-//         lastName: "S",
-//         roleId: 2,
-//         managerId: 1
-//     }
+function displayResults(results) {
+    console.log(`\n`);
+    console.table(results);
+    console.log(`\n`);
+}
 
-//     hireEmployee(answers);
+function selectExistingDepartment() {
+    console.log(`selectExistingDepartment`);
+    return 4;
+};
 
-//     // insert a new ...something...
-//     const answers2 = {
-//         firstName: "Diana",
-//         lastName: "S",
-//         roleId: 1,
-//         managerId: 1
-//     }
+function selectExistingRole() {
+    console.log(`selectExistingRole`);
+    return 4;
+};
 
-//     // update a record
-//     updateEmployeeRole(answers2);
+function selectExistingEmployee() {
+    console.log(`selectExistingEmployee`);
+    return 4;
+};
 
-//     // delete a record
-//     // youreFired();
-// }
+function selectExistingManager() {
+    console.log(`selectExistingManager`);
+    return 4;
+};
 
-// function getEmployees() {
-//     const query = connection.query(
-//         "SELECT * FROM employee", function (err, response) {
-//             if (err) throw err;
-//             console.table(response);
-//         }
-//     )
-// }
-
-// function hireEmployee(newEmployeeData) {
-//     const query = connection.query(
-//         "INSERT INTO employee SET ?",
-//         {
-//             first_name: newEmployeeData.firstName,
-//             last_name: newEmployeeData.lastName,
-//             role_id: newEmployeeData.roleId,
-//             manager_id: newEmployeeData.managerId
-//         }, function (err, response) {
-//             if (err) throw err;
-//             console.log(response.affectedRows + " employee hired!\n");
-//         }
-//     )
-// }
-
-// function updateEmployeeRole(updatedData) {
-//     const query = connection.query(
-//         "UPDATE employee SET ?",
-//         {
-//             first_name: newEmployeeData.firstName,
-//             last_name: newEmployeeData.lastName,
-//             role_id: newEmployeeData.roleId,
-//             manager_id: newEmployeeData.managerId
-//         }, function (err, response) {
-//             if (err) throw err;
-//             console.log(response.affectedRows + " employee hired!\n");
-//         }
-//     )
-// }
-
-// console.log("postANewItem");
-//     var query = connection.query(
-
-//         // name, actionType, itemType, item, description, minPrice, addAnother
-//       "INSERT INTO items SET ?",
-//       {
-//         title: userInput.item,
-//         itemType: userInput.itemType,
-//         itemDescription: VARCHAR(100),
-//         sellerName: VARCHAR(100),
-//         highBid: 
-
-//         flavor: "Rocky Road",
-//         price: 3.0,
-//         quantity: 50
-//       },
-//       function(err, res) {
-//         if (err) throw err;
-//         console.log(res.affectedRows + " product inserted!\n");
-//         // Call updateProduct AFTER the INSERT completes
-//         updateProduct();
-//       }
-//     );
-
-//     // logs the actual query being run
-//     console.log(query.sql);
-
+// on your mark, get set, GO!
 runSystem();
