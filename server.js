@@ -140,6 +140,7 @@ function viewAllDepartments() {
 function addDepartment(answers) {
     connection.query(`INSERT INTO department SET ?`, { name: answers.newDeptName }, function (err, results) {
         if (err) throw err;
+        displayResults(`New department with name '${answers.newDeptName}' and id ${results.insertId} saved.`)
         manageDepartments();
     });
 };
@@ -256,16 +257,44 @@ function viewAllRoles() {
 }
 
 function addRole(answers) {
-    const associatedDeptId = 4; //selectExistingDepartment();
-    connection.query(`INSERT INTO role SET ?`,
-        {
-            title: answers.newRoleTitle,
-            salary: answers.newRoleSalary,
-            department_id: associatedDeptId
-        }, function (err, results) {
-            if (err) throw err;
-            manageRoles();
+    // const associatedDeptId = selectExistingDepartment();
+    // console.log(`associatedDeptID ${associatedDeptId}`);
+    connection.query(`SELECT * FROM department`, function (err, results) {
+        if (err) throw err;
+
+        // make a list of existing choices
+        // and also keep track of their corresponding database ids
+        const choicesArray = [];
+        const idArray = [];
+        results.forEach(row => {
+            choicesArray.push(row.name);
+            idArray.push(row.id);
         });
+
+        inquirer.prompt([
+            {
+                name: `selected`,
+                type: `list`,
+                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                message: `Select department associated to new role: `
+            }
+        ]).then(function (selection) {
+            // get index of selection so we can grab corresponding database id
+            const index = choicesArray.indexOf(selection.selected);
+            const associatedDeptId = idArray[index];
+
+            connection.query(`INSERT INTO role SET ?`,
+                {
+                    title: answers.newRoleTitle,
+                    salary: answers.newRoleSalary,
+                    department_id: associatedDeptId
+                }, function (err, results) {
+                    if (err) throw err;
+                    displayResults(`New role with title '${answers.newRoleTitle}' and id ${results.insertId} saved.`)
+                    manageRoles();
+                });
+        });
+    });
 };
 
 function deleteRole() {
@@ -568,10 +597,34 @@ function displayResults(results) {
     console.log(`\n`);
 }
 
-// function selectExistingDepartment() {
-//     console.log(`selectExistingDepartment`);
-//     return 4;
-// };
+function selectExistingDepartment() {
+    connection.query(`SELECT * FROM department`, function (err, results) {
+        if (err) throw err;
+
+        // make a list of existing choices
+        // and also keep track of their corresponding database ids
+        const choicesArray = [];
+        const idArray = [];
+        results.forEach(row => {
+            choicesArray.push(row.name);
+            idArray.push(row.id);
+        });
+
+        inquirer.prompt([
+            {
+                name: `selected`,
+                type: `list`,
+                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                message: `Select department: `
+            }
+        ]).then(function (selection) {
+            // get index of selection so we can grab corresponding database id
+            const index = choicesArray.indexOf(selection.selected);
+            const idToReturn = idArray[index];
+            return idToReturn;
+        });
+    });
+};
 
 function selectExistingRole() {
     console.log(`selectExistingRole`);
