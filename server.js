@@ -13,14 +13,13 @@ const dbConfig = {
 const connection = mysql.createConnection(dbConfig);
 
 function runSystem() {
-    // employeeDB.connect();
     connection.connect(function (err) {
         if (err) {
             console.log(`unable to connect to database: ${err}`);
             return;
         }
     });
-    console.log(`Welcome to EMS, THE premiere Employee Management System`);
+    displayWithSpace(`Welcome to EMS, THE premiere Employee Management System`);
     selectMgmtArea();
 }
 
@@ -69,7 +68,7 @@ function selectMgmtArea() {
                 break;
 
             case mgmtOptions[5]:
-                console.log(`Thank you for using EMS, THE premiere Employee Management System`);
+                displayWithSpace(`Thank you for using EMS, THE premiere Employee Management System`);
                 connection.end();
                 return;
 
@@ -132,7 +131,8 @@ function manageDepartments() {
 function viewAllDepartments() {
     connection.query(`SELECT * FROM department`, function (err, results) {
         if (err) throw err;
-        displayResults(results);
+
+        displayWithSpace(results);
         manageDepartments();
     });
 }
@@ -140,7 +140,8 @@ function viewAllDepartments() {
 function addDepartment(answers) {
     connection.query(`INSERT INTO department SET ?`, { name: answers.newDeptName }, function (err, results) {
         if (err) throw err;
-        displayResults(`New department with name '${answers.newDeptName}' and id ${results.insertId} saved.`)
+
+        displayWithSpace(`New department with name '${answers.newDeptName}' and id ${results.insertId} saved.`)
         manageDepartments();
     });
 };
@@ -176,16 +177,11 @@ function deleteDepartment() {
                 const idToDelete = idArray[index];
 
                 // delete from the database
-                try {
-                    connection.query(`DELETE FROM department WHERE id = ${idToDelete}`), function (deleteErr, deleteResults) {
-                        if (deleteErr) {
-                            console.log(deleteErr);
-                            // throw deleteErr;
-                        }
-                    };
-                } catch (error) {
-                    console.log(error);
-                }
+                connection.query(`DELETE FROM department WHERE id = ${idToDelete}`), function (deleteErr, deleteResults) {
+                    if (deleteErr) throw deleteErr;
+                };
+
+                displayWithSpace(`Department with name '${selection.selected}' and id ${idToDelete} deleted.`)
             }
             manageDepartments();
         });
@@ -251,7 +247,8 @@ function manageRoles() {
 function viewAllRoles() {
     connection.query(`SELECT * FROM role`, function (err, results) {
         if (err) throw err;
-        displayResults(results);
+
+        displayWithSpace(results);
         manageRoles();
     });
 }
@@ -290,7 +287,8 @@ function addRole(answers) {
                     department_id: associatedDeptId
                 }, function (err, results) {
                     if (err) throw err;
-                    displayResults(`New role with title '${answers.newRoleTitle}' and id ${results.insertId} saved.`)
+
+                    displayWithSpace(`New role with title '${answers.newRoleTitle}' and id ${results.insertId} saved.`)
                     manageRoles();
                 });
         });
@@ -329,11 +327,10 @@ function deleteRole() {
 
                 // delete from the database
                 connection.query(`DELETE FROM role WHERE id = ${idToDelete}`), function (deleteErr, deleteResults) {
-                    if (deleteErr) {
-                        console.log(deleteErr);
-                        // throw deleteErr;
-                    }
+                    if (deleteErr) throw deleteErr;
                 };
+
+                displayWithSpace(`Role with title '${selection.selected}' and id ${idToDelete} deleted.`);
             }
             manageRoles();
         });
@@ -409,7 +406,8 @@ function manageEmployees() {
 function viewAllEmployees() {
     connection.query(`SELECT * FROM employee`, function (err, results) {
         if (err) throw err;
-        displayResults(results);
+
+        displayWithSpace(results);
         manageEmployees();
     });
 };
@@ -425,6 +423,8 @@ function addEmployee(answers) {
             manager_id: associatedManagerId
         }, function (err, results) {
             if (err) throw err;
+
+            displayWithSpace(`New employee with name '${answers.newEmployeeFirstName}' '${answers.newEmployeeLastName}' and id ${results.insertId} saved.`)
             manageEmployees();
         });
 };
@@ -461,11 +461,10 @@ function deleteEmployee() {
 
                 // delete from the database
                 connection.query(`DELETE FROM employee WHERE id = ${idToDelete}`), function (deleteErr, deleteResults) {
-                    if (deleteErr) {
-                        console.log(deleteErr);
-                        // throw deleteErr;
-                    }
+                    if (deleteErr) throw deleteErr;
                 };
+
+                displayWithSpace(`Employee with name '${selection.selected}' and id ${idToDelete} deleted.`);
             }
             manageEmployees();
         });
@@ -591,9 +590,9 @@ function viewByDepartmentReport() {
 //          HELPER FUNCTIONS
 // ================================================================================
 
-function displayResults(results) {
+function displayWithSpace(message) {
     console.log(`\n`);
-    console.table(results);
+    console.table(message);
     console.log(`\n`);
 }
 
