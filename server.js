@@ -254,8 +254,7 @@ function viewAllRoles() {
 }
 
 function addRole(answers) {
-    // const associatedDeptId = selectExistingDepartment();
-    // console.log(`associatedDeptID ${associatedDeptId}`);
+    // new role also needs an associated department so build a valid list for user to select from
     connection.query(`SELECT * FROM department`, function (err, results) {
         if (err) throw err;
 
@@ -413,21 +412,72 @@ function viewAllEmployees() {
 };
 
 function addEmployee(answers) {
-    const associatedRoleId = 3 //selectExistingRole();
-    const associatedManagerId = 1 //selectExistingManager();
-    connection.query(`INSERT INTO employee SET ?`,
-        {
-            first_name: answers.newEmployeeFirstName,
-            last_name: answers.newEmployeeLastName,
-            role_id: associatedRoleId,
-            manager_id: associatedManagerId
-        }, function (err, results) {
-            if (err) throw err;
+    // new employee also needs an associated role and manager so build valid lists for user to select from
+    connection.query(`SELECT * FROM role`, function (err, results) {
+        if (err) throw err;
 
-            displayWithSpace(`New employee with name '${answers.newEmployeeFirstName}' '${answers.newEmployeeLastName}' and id ${results.insertId} saved.`)
-            manageEmployees();
+        // make a list of existing choices
+        // and also keep track of their corresponding database ids
+        const choicesArray = [];
+        const idArray = [];
+        results.forEach(row => {
+            choicesArray.push(row.title);
+            idArray.push(row.id);
         });
-};
+
+        inquirer.prompt([
+            {
+                name: `selected`,
+                type: `list`,
+                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                message: `Select role of new employee: `
+            }
+        ]).then(function (selection) {
+            // get index of selection so we can grab corresponding database id
+            const index = choicesArray.indexOf(selection.selected);
+            const associatedRoleId = idArray[index];
+
+            connection.query(`SELECT * FROM employee`, function (mgrErr, mgrResults) {
+                if (mgrErr) throw mgrErr;
+
+                // make a list of existing choices
+                // and also keep track of their corresponding database ids
+                const mgrChoicesArray = [];
+                const mgrIdArray = [];
+                mgrResults.forEach(row => {
+                    mgrChoicesArray.push(`${row.first_name} ${row.last_name}`);
+                    mgrIdArray.push(row.id);
+                });
+
+                inquirer.prompt([
+                    {
+                        name: `mgrSelected`,
+                        type: `list`,
+                        choices: mgrChoicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                        message: `Select manager of new employee: `
+                    }
+                ]).then(function (mgrSelection) {
+                    // get index of selection so we can grab corresponding database id
+                    const mgrIndex = mgrChoicesArray.indexOf(mgrSelection.mgrSelected);
+                    const associatedManagerId = mgrIdArray[mgrIndex];
+
+                    connection.query(`INSERT INTO employee SET ?`,
+                        {
+                            first_name: answers.newEmployeeFirstName,
+                            last_name: answers.newEmployeeLastName,
+                            role_id: associatedRoleId,
+                            manager_id: associatedManagerId
+                        }, function (saveErr, saveResults) {
+                            if (saveErr) throw saveErr;
+
+                            displayWithSpace(`New employee with name '${answers.newEmployeeFirstName}' '${answers.newEmployeeLastName}' and id ${saveResults.insertId} saved.`)
+                            manageEmployees();
+                        });
+                });
+            });
+        });
+    });
+}
 
 function deleteEmployee() {
     connection.query(`SELECT * FROM employee`, function (err, results) {
