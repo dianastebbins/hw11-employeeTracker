@@ -145,10 +145,51 @@ function addDepartment(answers) {
 };
 
 function deleteDepartment() {
-    console.log(`deleteDepartment`);
-    selectExistingDepartment();
-    manageDepartments();
-};
+    connection.query(`SELECT * FROM department`, function (err, results) {
+        if (err) throw err;
+
+        // make a list of existing choices that can be deleted
+        // and also keep track of their corresponding database ids
+        const choicesArray = [];
+        const idArray = [];
+        results.forEach(row => {
+            choicesArray.push(row.name);
+            idArray.push(row.id);
+        });
+
+        // add an option to back out
+        const cancelOption = `CANCEL delete`;
+        choicesArray.push(cancelOption);
+
+        inquirer.prompt([
+            {
+                name: `selected`,
+                type: `list`,
+                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                message: `Select department to delete: `
+            }
+        ]).then(function (selection) {
+            if (selection.selected !== cancelOption) {
+                // get index of selection so we can grab corresponding database id
+                const index = choicesArray.indexOf(selection.selected);
+                const idToDelete = idArray[index];
+
+                // delete from the database
+                try {
+                    connection.query(`DELETE FROM department WHERE id = ${idToDelete}`), function (deleteErr, deleteResults) {
+                        if (deleteErr) {
+                            console.log(deleteErr);
+                            // throw deleteErr;
+                        }
+                    };
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+            manageDepartments();
+        });
+    });
+}
 
 // ================================================================================
 //          MANAGE ROLES
@@ -215,7 +256,7 @@ function viewAllRoles() {
 }
 
 function addRole(answers) {
-    const associatedDeptId = selectExistingDepartment();
+    const associatedDeptId = 4; //selectExistingDepartment();
     connection.query(`INSERT INTO role SET ?`,
         {
             title: answers.newRoleTitle,
@@ -228,10 +269,47 @@ function addRole(answers) {
 };
 
 function deleteRole() {
-    console.log(`deleteRole`);
-    selectExistingRole();
-    manageRoles();
-};
+    connection.query(`SELECT * FROM role`, function (err, results) {
+        if (err) throw err;
+
+        // make a list of existing choices that can be deleted
+        // and also keep track of their corresponding database ids
+        const choicesArray = [];
+        const idArray = [];
+        results.forEach(row => {
+            choicesArray.push(row.title);
+            idArray.push(row.id);
+        });
+
+        // add an option to back out
+        const cancelOption = `CANCEL delete`;
+        choicesArray.push(cancelOption);
+
+        inquirer.prompt([
+            {
+                name: `selected`,
+                type: `list`,
+                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                message: `Select role to delete: `
+            }
+        ]).then(function (selection) {
+            if (selection.selected !== cancelOption) {
+                // get index of selection so we can grab corresponding database id
+                const index = choicesArray.indexOf(selection.selected);
+                const idToDelete = idArray[index];
+
+                // delete from the database
+                connection.query(`DELETE FROM role WHERE id = ${idToDelete}`), function (deleteErr, deleteResults) {
+                    if (deleteErr) {
+                        console.log(deleteErr);
+                        // throw deleteErr;
+                    }
+                };
+            }
+            manageRoles();
+        });
+    });
+}
 
 // ================================================================================
 //          MANAGE EMPLOYEES
@@ -308,8 +386,8 @@ function viewAllEmployees() {
 };
 
 function addEmployee(answers) {
-    const associatedRoleId = selectExistingRole();
-    const associatedManagerId = selectExistingManager();
+    const associatedRoleId = 3 //selectExistingRole();
+    const associatedManagerId = 1 //selectExistingManager();
     connection.query(`INSERT INTO employee SET ?`,
         {
             first_name: answers.newEmployeeFirstName,
@@ -323,10 +401,47 @@ function addEmployee(answers) {
 };
 
 function deleteEmployee() {
-    console.log(`deleteEmployee`);
-    selectExistingEmployee();
-    manageEmployees();
-};
+    connection.query(`SELECT * FROM employee`, function (err, results) {
+        if (err) throw err;
+
+        // make a list of existing choices that can be deleted
+        // and also keep track of their corresponding database ids
+        const choicesArray = [];
+        const idArray = [];
+        results.forEach(row => {
+            choicesArray.push(`${row.first_name} ${row.last_name}`);
+            idArray.push(row.id);
+        });
+
+        // add an option to back out
+        const cancelOption = `CANCEL delete`;
+        choicesArray.push(cancelOption);
+
+        inquirer.prompt([
+            {
+                name: `selected`,
+                type: `list`,
+                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                message: `Select employee to delete: `
+            }
+        ]).then(function (selection) {
+            if (selection.selected !== cancelOption) {
+                // get index of selection so we can grab corresponding database id
+                const index = choicesArray.indexOf(selection.selected);
+                const idToDelete = idArray[index];
+
+                // delete from the database
+                connection.query(`DELETE FROM employee WHERE id = ${idToDelete}`), function (deleteErr, deleteResults) {
+                    if (deleteErr) {
+                        console.log(deleteErr);
+                        // throw deleteErr;
+                    }
+                };
+            }
+            manageEmployees();
+        });
+    });
+}
 
 function updateEmployeeRole() {
     console.log(`updateEmployeeRole`);
@@ -453,10 +568,10 @@ function displayResults(results) {
     console.log(`\n`);
 }
 
-function selectExistingDepartment() {
-    console.log(`selectExistingDepartment`);
-    return 4;
-};
+// function selectExistingDepartment() {
+//     console.log(`selectExistingDepartment`);
+//     return 4;
+// };
 
 function selectExistingRole() {
     console.log(`selectExistingRole`);
