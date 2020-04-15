@@ -21,7 +21,7 @@ A Content Management System for viewing and managing departments, roles and empl
 
 ### Installation
 ```
-This is a command line app and will need npm console.table, inquirer and mysql packages loaded locally in order to run.
+This is a command line app and will need npm console.table, inquirer and mysql packages loaded in order to run.
 ```
 [Deployed application](command line application, no url.)
 
