@@ -401,7 +401,13 @@ function manageEmployees() {
 }
 
 function viewAllEmployees() {
-    connection.query(`SELECT * FROM employee`, function (err, results) {
+    // improvement for readability of more complicated/long query strings
+    const selectPhrase = `SELECT emp.id, CONCAT(emp.first_name, " ", emp.last_name) AS employee, role.title, dept.name as department,`;
+    const selectPhraseCont = `role.salary, CONCAT(mgr.first_name, " ", mgr.last_name) AS manager`;
+    const joinPhrase = `FROM employee AS emp JOIN role ON emp.role_id = role.id JOIN department AS dept ON role.department_id = dept.id`;
+    const joinPhraseCont = `LEFT OUTER JOIN employee AS mgr ON emp.manager_id = mgr.id`;
+    
+    connection.query(`${selectPhrase} ${selectPhraseCont} ${joinPhrase} ${joinPhraseCont}`, function (err, results) {
         if (err) throw err;
 
         displayWithSpace(results);
