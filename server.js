@@ -179,7 +179,7 @@ function deleteDepartment() {
                 connection.query(`DELETE FROM department WHERE id = ${idToDelete}`), function (deleteErr, deleteResults) {
                     if (deleteErr) throw deleteErr;
                 };
-
+                
                 displayWithSpace(`Department '${selection.selected}' with id ${idToDelete} deleted.`)
             }
             manageDepartments();
@@ -695,11 +695,12 @@ function manageReports() {
 
 function viewFullManagementHierarchy() {
     // improvement for readability of more complicated/long query strings
-    const selectPhrase = `SELECT CONCAT(mgr.first_name, " ", mgr.last_name) AS 'Manager', CONCAT(emp.first_name, " ", emp.last_name) AS 'Employee'`;
+    const selectPhrase = `SELECT CONCAT(mgr.first_name, " ", mgr.last_name) AS 'Manager', mgrR.title AS 'Title', CONCAT(emp.first_name, " ", emp.last_name) AS 'Employee', empR.title AS 'Position'`;
     const joinPhrase = `FROM employee AS mgr JOIN employee AS emp ON emp.manager_id = mgr.id`;
+    const joinPhraseCont = `JOIN role AS mgrR ON mgr.role_id = mgrR.id JOIN role AS empR ON emp.role_id = empR.id`;
     const orderbyPhrase = `ORDER BY mgr.last_name, emp.last_name`;
 
-    connection.query(`${selectPhrase} ${joinPhrase} ${orderbyPhrase}`, function (err, results) {
+    connection.query(`${selectPhrase} ${joinPhrase} ${joinPhraseCont} ${orderbyPhrase}`, function (err, results) {
         if (err) throw err;
 
         displayWithSpace(results);
@@ -740,12 +741,13 @@ function viewManagerDirectReports() {
             const associatedManagerId = mgrIdArray[mgrIndex];
 
             // improvement for readability of more complicated/long query strings
-            const selectPhrase = `SELECT CONCAT(mgr.first_name, " ", mgr.last_name) AS 'Manager', CONCAT(emp.first_name, " ", emp.last_name) AS 'Employee'`;
+            const selectPhrase = `SELECT CONCAT(mgr.first_name, " ", mgr.last_name) AS 'Manager', mgrR.title AS 'Title', CONCAT(emp.first_name, " ", emp.last_name) AS 'Employee', empR.title AS 'Position'`;
             const joinPhrase = `FROM employee AS mgr JOIN employee AS emp ON emp.manager_id = mgr.id`;
+            const joinPhraseCont = `JOIN role AS mgrR ON mgr.role_id = mgrR.id JOIN role AS empR ON emp.role_id = empR.id`;
             const wherePhrase = `WHERE emp.manager_id = ?`;
             const orderbyPhrase = `ORDER BY emp.last_name`;
 
-            connection.query(`${selectPhrase} ${joinPhrase} ${wherePhrase} ${orderbyPhrase}`, [associatedManagerId], function (err, results) {
+            connection.query(`${selectPhrase} ${joinPhrase} ${joinPhraseCont} ${wherePhrase} ${orderbyPhrase}`, [associatedManagerId], function (err, results) {
                 if (err) throw err;
 
                 displayWithSpace(results);
