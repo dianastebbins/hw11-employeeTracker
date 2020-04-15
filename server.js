@@ -129,7 +129,7 @@ function manageDepartments() {
 }
 
 function viewAllDepartments() {
-    connection.query(`SELECT * FROM department`, function (err, results) {
+    connection.query(`SELECT id AS 'ID', name as 'Department Name' FROM department`, function (err, results) {
         if (err) throw err;
 
         displayWithSpace(results);
@@ -244,7 +244,7 @@ function manageRoles() {
 }
 
 function viewAllRoles() {
-    connection.query(`SELECT * FROM role`, function (err, results) {
+    connection.query(`SELECT id AS 'ID', title AS 'Job Title', LPAD(CONCAT('$',FORMAT(salary,2)),15,' ') AS 'Salary', department_id AS 'Department ID' FROM role`, function (err, results) {
         if (err) throw err;
 
         displayWithSpace(results);
@@ -402,8 +402,8 @@ function manageEmployees() {
 
 function viewAllEmployees() {
     // improvement for readability of more complicated/long query strings
-    const selectPhrase = `SELECT emp.id, CONCAT(emp.first_name, " ", emp.last_name) AS employee, role.title, dept.name as department,`;
-    const selectPhraseCont = `role.salary, CONCAT(mgr.first_name, " ", mgr.last_name) AS manager`;
+    const selectPhrase = `SELECT emp.id AS 'ID', CONCAT(emp.first_name, " ", emp.last_name) AS Employee, role.title AS Title, dept.name as Department,`;
+    const selectPhraseCont = `LPAD(CONCAT('$',FORMAT(role.salary,2)),15,' ') AS Salary, CONCAT(mgr.first_name, " ", mgr.last_name) AS Manager`;
     const joinPhrase = `FROM employee AS emp JOIN role ON emp.role_id = role.id JOIN department AS dept ON role.department_id = dept.id`;
     const joinPhraseCont = `LEFT OUTER JOIN employee AS mgr ON emp.manager_id = mgr.id`;
     
@@ -774,9 +774,9 @@ function viewBudgetReport() {
 // ================================================================================
 
 function displayWithSpace(message) {
-    console.log(`\n`);
+    console.log(`\n================================================================================`);
     console.table(message);
-    console.log(`\n`);
+    console.log(`================================================================================\n`);
 }
 
 // ================================================================================
