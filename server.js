@@ -10,6 +10,7 @@ const dbConfig = {
     database: "employee_db"
 };
 
+const cancelDeleteOption = `Cancel delete`;
 const connection = mysql.createConnection(dbConfig);
 
 function runSystem() {
@@ -141,7 +142,7 @@ function addDepartment(answers) {
     connection.query(`INSERT INTO department SET ?`, { name: answers.newDeptName }, function (err, results) {
         if (err) throw err;
 
-        displayWithSpace(`New department with name '${answers.newDeptName}' and id ${results.insertId} saved.`)
+        displayWithSpace(`New department '${answers.newDeptName}' with id ${results.insertId} added.`)
         manageDepartments();
     });
 };
@@ -160,18 +161,17 @@ function deleteDepartment() {
         });
 
         // add an option to back out
-        const cancelOption = `CANCEL delete`;
-        choicesArray.push(cancelOption);
+        choicesArray.push(cancelDeleteOption);
 
         inquirer.prompt([
             {
                 name: `selected`,
                 type: `list`,
-                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                choices: choicesArray,
                 message: `Select department to delete: `
             }
         ]).then(function (selection) {
-            if (selection.selected !== cancelOption) {
+            if (selection.selected !== cancelDeleteOption) {
                 // get index of selection so we can grab corresponding database id
                 const index = choicesArray.indexOf(selection.selected);
                 const idToDelete = idArray[index];
@@ -181,7 +181,7 @@ function deleteDepartment() {
                     if (deleteErr) throw deleteErr;
                 };
 
-                displayWithSpace(`Department with name '${selection.selected}' and id ${idToDelete} deleted.`)
+                displayWithSpace(`Department '${selection.selected}' with id ${idToDelete} deleted.`)
             }
             manageDepartments();
         });
@@ -271,7 +271,7 @@ function addRole(answers) {
             {
                 name: `selected`,
                 type: `list`,
-                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                choices: choicesArray,
                 message: `Select department associated to new role: `
             }
         ]).then(function (selection) {
@@ -287,7 +287,7 @@ function addRole(answers) {
                 }, function (err, results) {
                     if (err) throw err;
 
-                    displayWithSpace(`New role with title '${answers.newRoleTitle}' and id ${results.insertId} saved.`)
+                    displayWithSpace(`New role '${answers.newRoleTitle}' with id ${results.insertId} added.`)
                     manageRoles();
                 });
         });
@@ -308,18 +308,17 @@ function deleteRole() {
         });
 
         // add an option to back out
-        const cancelOption = `CANCEL delete`;
-        choicesArray.push(cancelOption);
+        choicesArray.push(cancelDeleteOption);
 
         inquirer.prompt([
             {
                 name: `selected`,
                 type: `list`,
-                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                choices: choicesArray,
                 message: `Select role to delete: `
             }
         ]).then(function (selection) {
-            if (selection.selected !== cancelOption) {
+            if (selection.selected !== cancelDeleteOption) {
                 // get index of selection so we can grab corresponding database id
                 const index = choicesArray.indexOf(selection.selected);
                 const idToDelete = idArray[index];
@@ -329,7 +328,7 @@ function deleteRole() {
                     if (deleteErr) throw deleteErr;
                 };
 
-                displayWithSpace(`Role with title '${selection.selected}' and id ${idToDelete} deleted.`);
+                displayWithSpace(`Role '${selection.selected}' with id ${idToDelete} deleted.`);
             }
             manageRoles();
         });
@@ -345,8 +344,8 @@ const employeeOptions = [
     `View All Employees`,
     `Add New Employee`,
     `Delete Employee`,
-    `Update Role`,
-    'Update Manager'
+    `Update Employee's Role`,
+    `Update Employee's Manager`
 ];
 const employeeOptionQuestions = [
     {
@@ -429,7 +428,7 @@ function addEmployee(answers) {
             {
                 name: `selected`,
                 type: `list`,
-                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                choices: choicesArray,
                 message: `Select role of new employee: `
             }
         ]).then(function (selection) {
@@ -437,7 +436,7 @@ function addEmployee(answers) {
             const index = choicesArray.indexOf(selection.selected);
             const associatedRoleId = idArray[index];
 
-            connection.query(`SELECT * FROM employee`, function (mgrErr, mgrResults) {
+            connection.query(`SELECT e.id, e.first_name, e.last_name FROM employee e JOIN role r WHERE e.role_id = r.id AND r.title like '%MANAGER%'`, function (mgrErr, mgrResults) {
                 if (mgrErr) throw mgrErr;
 
                 // make a list of existing choices
@@ -453,7 +452,7 @@ function addEmployee(answers) {
                     {
                         name: `mgrSelected`,
                         type: `list`,
-                        choices: mgrChoicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                        choices: mgrChoicesArray,
                         message: `Select manager of new employee: `
                     }
                 ]).then(function (mgrSelection) {
@@ -470,7 +469,7 @@ function addEmployee(answers) {
                         }, function (saveErr, saveResults) {
                             if (saveErr) throw saveErr;
 
-                            displayWithSpace(`New employee with name '${answers.newEmployeeFirstName}' '${answers.newEmployeeLastName}' and id ${saveResults.insertId} saved.`)
+                            displayWithSpace(`New employee '${answers.newEmployeeFirstName}' '${answers.newEmployeeLastName}' with id ${saveResults.insertId} added.`)
                             manageEmployees();
                         });
                 });
@@ -493,18 +492,17 @@ function deleteEmployee() {
         });
 
         // add an option to back out
-        const cancelOption = `CANCEL delete`;
-        choicesArray.push(cancelOption);
+        choicesArray.push(cancelDeleteOption);
 
         inquirer.prompt([
             {
                 name: `selected`,
                 type: `list`,
-                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                choices: choicesArray,
                 message: `Select employee to delete: `
             }
         ]).then(function (selection) {
-            if (selection.selected !== cancelOption) {
+            if (selection.selected !== cancelDeleteOption) {
                 // get index of selection so we can grab corresponding database id
                 const index = choicesArray.indexOf(selection.selected);
                 const idToDelete = idArray[index];
@@ -514,7 +512,7 @@ function deleteEmployee() {
                     if (deleteErr) throw deleteErr;
                 };
 
-                displayWithSpace(`Employee with name '${selection.selected}' and id ${idToDelete} deleted.`);
+                displayWithSpace(`Employee '${selection.selected}' with id ${idToDelete} deleted.`);
             }
             manageEmployees();
         });
@@ -522,17 +520,127 @@ function deleteEmployee() {
 }
 
 function updateEmployeeRole() {
-    console.log(`updateEmployeeRole`);
-    selectExistingEmployee();
-    selectExistingRole();
-    manageEmployees();
+    // pick an employee to update and then pick their new role, build valid lists for user to select from
+    connection.query(`SELECT * FROM employee`, function (err, results) {
+        if (err) throw err;
+
+        // make a list of existing choices
+        // and also keep track of their corresponding database ids
+        const choicesArray = [];
+        const idArray = [];
+        results.forEach(row => {
+            choicesArray.push(`${row.first_name} ${row.last_name}`);
+            idArray.push(row.id);
+        });
+
+        inquirer.prompt([
+            {
+                name: `selected`,
+                type: `list`,
+                choices: choicesArray,
+                message: `Select employee: `
+            }
+        ]).then(function (selection) {
+            // get index of selection so we can grab corresponding database id
+            const index = choicesArray.indexOf(selection.selected);
+            const associatedEmpId = idArray[index];
+
+            connection.query(`SELECT * from role`, function (roleErr, roleResults) {
+                if (roleErr) throw roleErr;
+
+                // make a list of existing choices
+                // and also keep track of their corresponding database ids
+                const roleChoicesArray = [];
+                const roleIdArray = [];
+                roleResults.forEach(row => {
+                    roleChoicesArray.push(`${row.title}`);
+                    roleIdArray.push(row.id);
+                });
+
+                inquirer.prompt([
+                    {
+                        name: `roleSelected`,
+                        type: `list`,
+                        choices: roleChoicesArray,
+                        message: `Select new role of employee: `
+                    }
+                ]).then(function (roleSelection) {
+                    // get index of selection so we can grab corresponding database id
+                    const roleIndex = roleChoicesArray.indexOf(roleSelection.roleSelected);
+                    const associatedRoleId = roleIdArray[roleIndex];
+
+                    connection.query(`UPDATE employee SET role_id = ${associatedRoleId} WHERE id = ${associatedEmpId}`, function (saveErr, saveResults) {
+                        if (saveErr) throw saveErr;
+
+                        displayWithSpace(`Employee '${selection.selected}' with id ${associatedEmpId} updated to role ${roleSelection.roleSelected}.`)
+                        manageEmployees();
+                    });
+                });
+            });
+        });
+    });
 };
 
 function updateEmployeeManager() {
-    console.log(`updateEmployeeManager`);
-    selectExistingEmployee();
-    selectExistingManager();
-    manageEmployees();
+    // pick an employee to update and then pick their new role, build valid lists for user to select from
+    connection.query(`SELECT * FROM employee`, function (err, results) {
+        if (err) throw err;
+
+        // make a list of existing choices
+        // and also keep track of their corresponding database ids
+        const choicesArray = [];
+        const idArray = [];
+        results.forEach(row => {
+            choicesArray.push(`${row.first_name} ${row.last_name}`);
+            idArray.push(row.id);
+        });
+
+        inquirer.prompt([
+            {
+                name: `selected`,
+                type: `list`,
+                choices: choicesArray,
+                message: `Select employee: `
+            }
+        ]).then(function (selection) {
+            // get index of selection so we can grab corresponding database id
+            const index = choicesArray.indexOf(selection.selected);
+            const associatedEmpId = idArray[index];
+
+            connection.query(`SELECT e.id, e.first_name, e.last_name FROM employee e JOIN role r WHERE e.role_id = r.id AND r.title like '%MANAGER%'`, function (mgrErr, mgrResults) {
+                if (mgrErr) throw mgrErr;
+
+                // make a list of existing choices
+                // and also keep track of their corresponding database ids
+                const mgrChoicesArray = [];
+                const mgrIdArray = [];
+                mgrResults.forEach(row => {
+                    mgrChoicesArray.push(`${row.first_name} ${row.last_name}`);
+                    mgrIdArray.push(row.id);
+                });
+
+                inquirer.prompt([
+                    {
+                        name: `mgrSelected`,
+                        type: `list`,
+                        choices: mgrChoicesArray,
+                        message: `Select manager of new employee: `
+                    }
+                ]).then(function (mgrSelection) {
+                    // get index of selection so we can grab corresponding database id
+                    const mgrIndex = mgrChoicesArray.indexOf(mgrSelection.mgrSelected);
+                    const associatedManagerId = mgrIdArray[mgrIndex];
+
+                    connection.query(`UPDATE employee SET manager_id = ${associatedManagerId} WHERE id = ${associatedEmpId}`, function (saveErr, saveResults) {
+                        if (saveErr) throw saveErr;
+
+                        displayWithSpace(`Employee '${selection.selected}' with id ${associatedEmpId} now reports to ${mgrSelection.mgrSelected}.`)
+                        manageEmployees();
+                    });
+                });
+            });
+        });
+    });
 };
 
 
@@ -576,11 +684,28 @@ function manageEmployeeReports() {
 }
 
 function viewAllEmployeesReport() {
-    console.log(`viewAllEmployeesReport`);
-    manageEmployeeReports();
+    //     SELECT mgr.first_name, emp.first_name
+    // FROM employee as mgr JOIN employee as emp
+    // ON emp.manager_id = mgr.id
+    // ORDER BY mgr.first_name, emp.first_name;
+
+    // connection.query(`SELECT * FROM department`, function (err, results) {
+    //     if (err) throw err;
+
+    //     displayWithSpace(results);
+    //     manageEmployeeReports();
+    // });
+
 };
 
 function viewByManagerReport() {
+
+    // SELECT mgr.first_name, emp.first_name
+    // FROM employee as mgr JOIN employee as emp
+    // ON emp.manager_id = mgr.id
+    // WHERE mgr.id = 4
+    // ORDER BY mgr.first_name, emp.first_name;
+
     console.log(`viewByManagerReport`);
     selectExistingManager();
     manageEmployeeReports();
@@ -663,7 +788,7 @@ function selectExistingDepartment() {
             {
                 name: `selected`,
                 type: `list`,
-                choices: choicesArray,   // results WILL show options if returned field is "name"...couldn't get to id though
+                choices: choicesArray,
                 message: `Select department: `
             }
         ]).then(function (selection) {
