@@ -2,6 +2,10 @@ const inquirer = require("inquirer");
 const mysql = require("mysql");
 const consoleTable = require("console.table");
 
+// ================================================================================
+//          MOSTLY BOILERPLATE SECTION
+// ================================================================================
+
 const dbConfig = {
     host: "localhost",
     port: 3306,
@@ -10,8 +14,8 @@ const dbConfig = {
     database: "employee_db"
 };
 
-const cancelDeleteOption = `Cancel delete`;
 const connection = mysql.createConnection(dbConfig);
+const cancelDeleteOption = `Cancel delete`;
 
 function runSystem() {
     connection.connect(function (err) {
@@ -32,8 +36,7 @@ const mgmtOptions = [
     `Manage Departments`,
     `Manage Roles`,
     `Manage Employees`,
-    `Employees by Manager Report`,
-    `Budget by Department Report`,
+    `Reports`,
     `Exit`
 ];
 const mgmtOptionQ = [
@@ -61,14 +64,10 @@ function selectMgmtArea() {
                 break;
 
             case mgmtOptions[3]:
-                manageEmployeeReports();
+                manageReports();
                 break;
 
             case mgmtOptions[4]:
-                manageDepartmentBudgetReports();
-                break;
-
-            case mgmtOptions[5]:
                 displayWithSpace(`Thank you for using EMS, THE premiere Employee Management System`);
                 connection.end();
                 return;
@@ -645,120 +644,123 @@ function updateEmployeeManager() {
 
 
 // ================================================================================
-//          EMPLOYEE REPORTS
+//          REPORTS
 // ================================================================================
 
-const employeeReportOptions = [
+const reportOptions = [
     `Return to Management Options`,
-    `View Employees of all Managers`,
-    `Report by specific Manager`
+    `Full Management Hierarchy`,
+    `View Manager Direct Reports`,
+    `Budget Report by Department`
 ];
-const employeeReportOptionQ = [
+const reportOptionQ = [
     {
-        name: `employeeReportOptionSelected`,
+        name: `reportOptionSelected`,
         type: `list`,
-        choices: employeeReportOptions,
+        choices: reportOptions,
         message: `Select task: `
     }
 ];
 
-function manageEmployeeReports() {
-    inquirer.prompt(employeeReportOptionQ).then(function (answers) {
-        switch (answers.employeeReportOptionSelected) {
-            case employeeReportOptions[0]:
+function manageReports() {
+    inquirer.prompt(reportOptionQ).then(function (answers) {
+        switch (answers.reportOptionSelected) {
+            case reportOptions[0]:
                 selectMgmtArea();
                 return;
 
-            case employeeReportOptions[1]:
-                viewAllEmployeesReport();
+            case reportOptions[1]:
+                viewFullManagementHierarchy();
                 break;
 
-            case employeeReportOptions[2]:
-                viewByManagerReport();
+            case reportOptions[2]:
+                viewManagerDirectReports();
+                break;
+
+            case reportOptions[3]:
+                viewBudgetReport();
                 break;
 
             default:
-                manageEmployeeReports();
+                manageReports();
         };
     });
 }
 
-function viewAllEmployeesReport() {
-    //     SELECT mgr.first_name, emp.first_name
-    // FROM employee as mgr JOIN employee as emp
-    // ON emp.manager_id = mgr.id
-    // ORDER BY mgr.first_name, emp.first_name;
+function viewFullManagementHierarchy() {
+    // improvement for readability of more complicated/long query strings
+    const selectPhrase = `SELECT CONCAT(mgr.first_name, " ", mgr.last_name) AS 'Manager', CONCAT(emp.first_name, " ", emp.last_name) AS 'Employee'`;
+    const joinPhrase = `FROM employee AS mgr JOIN employee AS emp ON emp.manager_id = mgr.id`;
+    const orderbyPhrase = `ORDER BY mgr.last_name, emp.last_name`;
 
-    // connection.query(`SELECT * FROM department`, function (err, results) {
-    //     if (err) throw err;
+    connection.query(`${selectPhrase} ${joinPhrase} ${orderbyPhrase}`, function (err, results) {
+        if (err) throw err;
 
-    //     displayWithSpace(results);
-    //     manageEmployeeReports();
-    // });
-
-};
-
-function viewByManagerReport() {
-
-    // SELECT mgr.first_name, emp.first_name
-    // FROM employee as mgr JOIN employee as emp
-    // ON emp.manager_id = mgr.id
-    // WHERE mgr.id = 4
-    // ORDER BY mgr.first_name, emp.first_name;
-
-    console.log(`viewByManagerReport`);
-    selectExistingManager();
-    manageEmployeeReports();
-};
-
-// ================================================================================
-//          BUDGET REPORTS
-// ================================================================================
-
-const budgetReportOptions = [
-    `Return to Management Options`,
-    `View Budgets of all Departments`,
-    `Report by specific Department`
-];
-const budgetReportOptionQ = [
-    {
-        name: `budgetReportOptionSelected`,
-        type: `list`,
-        choices: budgetReportOptions,
-        message: `Select task: `
-    }
-];
-
-function manageDepartmentBudgetReports() {
-    inquirer.prompt(budgetReportOptionQ).then(function (answers) {
-        switch (answers.budgetReportOptionSelected) {
-            case budgetReportOptions[0]:
-                selectMgmtArea();
-                return;
-
-            case budgetReportOptions[1]:
-                viewAllBudgetsReport();
-                break;
-
-            case budgetReportOptions[2]:
-                viewByDepartmentReport();
-                break;
-
-            default:
-                manageDepartmentBudgetReports();
-        };
+        displayWithSpace(results);
+        manageReports();
     });
-}
-
-function viewAllBudgetsReport() {
-    console.log(`viewAllBudgetsReport`);
-    manageDepartmentBudgetReports();
 };
 
-function viewByDepartmentReport() {
-    console.log(`viewByDepartmentReport`);
-    selectExistingDepartment();
-    manageDepartmentBudgetReports();
+function viewManagerDirectReports() {
+    // get a specific manager to filter results by
+    // improvement for readability of more complicated/long query strings
+    const selectMgrPhrase = `SELECT emp.id, emp.first_name, emp.last_name`;
+    const joinMgrPhrase = `FROM employee AS emp JOIN role ON emp.role_id = role.id`;
+    const whereMgrPhrase = `WHERE role.title like '%MANAGER%'`;
+    const orderbyMgrPhrase = `ORDER BY emp.last_name`;
+
+    connection.query(`${selectMgrPhrase} ${joinMgrPhrase} ${whereMgrPhrase} ${orderbyMgrPhrase}`, function (mgrErr, mgrResults) {
+        if (mgrErr) throw mgrErr;
+
+        // make a list of existing choices
+        // and also keep track of their corresponding database ids
+        const mgrChoicesArray = [];
+        const mgrIdArray = [];
+        mgrResults.forEach(row => {
+            mgrChoicesArray.push(`${row.first_name} ${row.last_name}`);
+            mgrIdArray.push(row.id);
+        });
+
+        inquirer.prompt([
+            {
+                name: `mgrSelected`,
+                type: `list`,
+                choices: mgrChoicesArray,
+                message: `Select specific manager: `
+            }
+        ]).then(function (mgrSelection) {
+            // get index of selection so we can grab corresponding database id
+            const mgrIndex = mgrChoicesArray.indexOf(mgrSelection.mgrSelected);
+            const associatedManagerId = mgrIdArray[mgrIndex];
+
+            // improvement for readability of more complicated/long query strings
+            const selectPhrase = `SELECT CONCAT(mgr.first_name, " ", mgr.last_name) AS 'Manager', CONCAT(emp.first_name, " ", emp.last_name) AS 'Employee'`;
+            const joinPhrase = `FROM employee AS mgr JOIN employee AS emp ON emp.manager_id = mgr.id`;
+            const wherePhrase = `WHERE emp.manager_id = ?`;
+            const orderbyPhrase = `ORDER BY emp.last_name`;
+
+            connection.query(`${selectPhrase} ${joinPhrase} ${wherePhrase} ${orderbyPhrase}`, [associatedManagerId], function (err, results) {
+                if (err) throw err;
+
+                displayWithSpace(results);
+                manageReports();
+            });
+        });
+    });
+};
+
+function viewBudgetReport() {
+    // improvement for readability of more complicated/long query strings
+    const selectPhrase = `SELECT dept.name AS Department, LPAD(CONCAT('$',FORMAT(COALESCE(SUM(role.salary),0.00),2)),20,' ') AS 'Total Deptartment Salary'`;
+    const joinPhrase = `FROM employee AS emp JOIN role ON emp.role_id = role.id RIGHT OUTER JOIN department AS dept ON role.department_id = dept.id`;
+    const groupbyPhrase = `GROUP BY Department`;
+
+    connection.query(`${selectPhrase} ${joinPhrase} ${groupbyPhrase}`, function (err, results) {
+        if (err) throw err;
+
+        displayWithSpace(results);
+        manageReports();
+    });
 };
 
 // ================================================================================
@@ -771,49 +773,8 @@ function displayWithSpace(message) {
     console.log(`\n`);
 }
 
-function selectExistingDepartment() {
-    connection.query(`SELECT * FROM department`, function (err, results) {
-        if (err) throw err;
+// ================================================================================
+//          START THE APP!!!
+// ================================================================================
 
-        // make a list of existing choices
-        // and also keep track of their corresponding database ids
-        const choicesArray = [];
-        const idArray = [];
-        results.forEach(row => {
-            choicesArray.push(row.name);
-            idArray.push(row.id);
-        });
-
-        inquirer.prompt([
-            {
-                name: `selected`,
-                type: `list`,
-                choices: choicesArray,
-                message: `Select department: `
-            }
-        ]).then(function (selection) {
-            // get index of selection so we can grab corresponding database id
-            const index = choicesArray.indexOf(selection.selected);
-            const idToReturn = idArray[index];
-            return idToReturn;
-        });
-    });
-};
-
-function selectExistingRole() {
-    console.log(`selectExistingRole`);
-    return 4;
-};
-
-function selectExistingEmployee() {
-    console.log(`selectExistingEmployee`);
-    return 4;
-};
-
-function selectExistingManager() {
-    console.log(`selectExistingManager`);
-    return 4;
-};
-
-// on your mark, get set, GO!
 runSystem();
